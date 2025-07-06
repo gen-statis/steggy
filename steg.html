@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Image from Query Parameter</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        img {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+        }
+        .error {
+            color: red;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Get the query string parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const imageUrl = urlParams.get('image');
+
+        // If image parameter exists, create and display the image
+        if (imageUrl) {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = 'Image from query parameter';
+            // Handle image load error
+            img.onerror = () => {
+                document.body.innerHTML = '<p class="error">Failed to load image. Please check the URL.</p>';
+            };
+            document.body.appendChild(img);
+        } else {
+            document.body.innerHTML = '<p class="error">No image URL provided in query parameter.</p>';
+        }
+    </script>
+</body>
+</html>
