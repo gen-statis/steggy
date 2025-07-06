@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Display Image from Query Parameter</title>
+    <title>Display Image with Steganography Tools</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
             display: flex;
@@ -12,36 +13,197 @@
             height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            text-align: center;
         }
         img {
             max-width: 80%;
-            max-height: 80%;
+            max-height: 60%;
             object-fit: contain;
+            margin-bottom: 20px;
         }
         .error {
             color: red;
-            font-family: Arial, sans-serif;
+        }
+        .slidecontainer {
+            width: 99%;
+            margin: 10px auto;
+        }
+        .slider {
+            width: 100%;
+        }
+        .decode-button {
+            margin: 10px;
+            padding: 8px 16px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <div class="file-approval-item">
+            <div class="file-info"></div>
+            <div class="file-thumbnail"><img id="thumbnail" alt="Image from query parameter"></div>
+            <a id="source-link" target="_blank"></a>
+        </div>
+    </div>
     <script>
-        // Get the query string parameter
+        // Get query string parameter
         const urlParams = new URLSearchParams(window.location.search);
         const imageUrl = urlParams.get('image');
 
-        // If image parameter exists, create and display the image
-        if (imageUrl) {
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            img.alt = 'Image from query parameter';
-            // Handle image load error
-            img.onerror = () => {
-                document.body.innerHTML = '<p class="error">Failed to load image. Please check the URL.</p>';
-            };
-            document.body.appendChild(img);
+        // Validate image URL and supported extensions
+        const supportedExtensions = ['.png', '.jpeg', '.jpg', '.webp'];
+        const isValidImage = imageUrl && supportedExtensions.some(ext => imageUrl.toLowerCase().endsWith(ext));
+
+        if (!imageUrl || !isValidImage) {
+            $('.container').html('<p class="error">No valid image URL provided in query parameter (supported: .png, .jpeg, .jpg, .webp).</p>');
         } else {
-            document.body.innerHTML = '<p class="error">No image URL provided in query parameter.</p>';
+            // Set image and link
+            $('#thumbnail').attr('src', imageUrl);
+            $('#source-link').attr('href', imageUrl);
+
+            // Add steganography controls
+            const file = $('.file-info')[0];
+            const thumbImg = $('#thumbnail')[0];
+            const sourceLink = $('#source-link')[0];
+
+            // Create UI elements
+            const p = document.createElement('p');
+            p.textContent = 'Steganography Scan:';
+
+            const slideContainer = document.createElement('div');
+            slideContainer.className = 'slidecontainer';
+
+            const rangeInput = document.createElement('input');
+            rangeInput.type = 'range';
+            rangeInput.min = '1';
+            rangeInput.max = '8';
+            rangeInput.value = '1';
+            rangeInput.className = 'slider';
+            rangeInput.style.width = '99%';
+            slideContainer.appendChild(rangeInput);
+
+            const flexDiv = document.createElement('div');
+            flexDiv.style.display = 'flex';
+            flexDiv.style.justifyContent = 'center';
+
+            const decodeButton = document.createElement('input');
+            decodeButton.className = 'decode-button';
+            decodeButton.type = 'button';
+            decodeButton.value = 'Decode';
+            decodeButton.disabled = false;
+            flexDiv.appendChild(decodeButton);
+
+            file.appendChild(p);
+            file.appendChild(slideContainer);
+            file.appendChild(flexDiv);
+
+            // Store original image source
+            thumbImg.dataset.originalSrc = thumbImg.src;
+
+            // Slider event for LSB visualization
+            $(rangeInput).on('input', function() {
+                const bits = parseInt(this.value);
+                if (bits === 1) {
+                    thumbImg.src = thumbImg.dataset.originalSrc || thumbImg.src;
+                } else {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        doUnhideImage(imageData, bits - 1);
+                        ctx.putImageData(imageData, 0, 0);
+                        thumbImg.src = canvas.toDataURL();
+                    };
+                    img.onerror = function() {
+                        $('.container').html('<p class="error">Failed to load image. Ensure the URL is valid and CORS-enabled.</p>');
+                    };
+                    img.src = sourceLink.href;
+                }
+            });
+
+            // Decode button event
+            $(decodeButton).on('click', function() {
+                decodeButton.value = 'Copying...';
+                decodeButton.disabled = true;
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function() {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const binaryMessage = [];
+                    const pixel = imageData.data;
+                    for (let i = 0, n = pixel.length; i < n; i += 4) {
+                        for (let offset = 0; offset < 3; offset++) {
+                            let value = pixel[i + offset] % 2;
+                            binaryMessage.push(value);
+                        }
+                    }
+
+                    let output = '';
+                    for (let i = 0; i < binaryMessage.length; i += 8) {
+                        if (i + 7 >= binaryMessage.length) break;
+                        let c = 0;
+                        for (let j = 0; j < 8; j++) {
+                            c <<= 1;
+                            c |= binaryMessage[i + j];
+                        }
+                        output += String.fromCharCode(c);
+                    }
+
+                    decodeButton.value = 'Decode';
+                    decodeButton.disabled = false;
+                    navigator.clipboard.writeText(output).then(() => {
+                        alert('Decoded message copied to clipboard.');
+                    }).catch(err => {
+                        alert('Failed to copy decoded message to clipboard.');
+                    });
+                };
+                img.onerror = function() {
+                    decodeButton.value = 'Decode';
+                    decodeButton.disabled = false;
+                    $('.container').html('<p class="error">Failed to load image for decoding. Ensure the URL is valid and CORS-enabled.</p>');
+                };
+                img.src = sourceLink.href;
+            });
+
+            // Handle initial image load error
+            thumbImg.onerror = function() {
+                $('.container').html('<p class="error">Failed to load image. Ensure the URL is valid and CORS-enabled.</p>');
+            };
+        }
+
+        // Steganography unhiding function
+        function doUnhideImage(stegdata, bits) {
+            let stegpix = stegdata.data;
+            let w = stegdata.width;
+            let h = stegdata.height;
+
+            for (let y = 0; y < h; y++) {
+                let stegy = y * w;
+                for (let x = 0; x < w; x++) {
+                    let stegidx = 4 * (stegy + x);
+                    // Red
+                    stegpix[stegidx] = (stegpix[stegidx] << (8 - bits)) & 0xff;
+                    // Green
+                    stegpix[stegidx + 1] = (stegpix[stegidx + 1] << (8 - bits)) & 0xff;
+                    // Blue
+                    stegpix[stegidx + 2] = (stegpix[stegidx + 2] << (8 - bits)) & 0xff;
+                }
+            }
         }
     </script>
 </body>
