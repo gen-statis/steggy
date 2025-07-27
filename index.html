@@ -67,8 +67,13 @@
         if (!parameter || !isValidImage) {
             $('.container').html('<p class="error">No valid image URL provided in query parameter (supported: .png, .jpeg, .jpg, .webp).</p>');
         } else {
+            // Modify URL to add "www." to "soyjak.st" if not already present
+            let modifiedParameter = parameter;
+            if (parameter.includes('soyjak.st') && !parameter.includes('www.soyjak.st')) {
+                modifiedParameter = parameter.replace('soyjak.st', 'www.soyjak.st');
+            }
             // Set image and link
-			const imageUrl = "https://corsproxy.io/?url="+parameter
+            const imageUrl = "https://corsproxy.io/?url=" + modifiedParameter;
             $('#thumbnail').attr('src', imageUrl);
             $('#source-link').attr('href', imageUrl);
 
